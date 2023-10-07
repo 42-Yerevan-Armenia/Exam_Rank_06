@@ -9,7 +9,6 @@ clang -Wall -Wextra -Werror mini_serv.c -o mini_serv && ./mini_serv 8080
 Opens two additional terminals for Second terminal (first client) and Third terminal (second client)
 ```
 nc localhost 8080
-nc localhost 8080
 ```
 <img width="1070" alt="image" src="https://user-images.githubusercontent.com/58044383/204136683-34119db9-c4ec-446e-b1b8-73ac2ea7c2d5.png">
 
