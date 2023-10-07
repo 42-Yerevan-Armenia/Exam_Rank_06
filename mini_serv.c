@@ -2,12 +2,20 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
-#define MAX_CLIENTS 128
-#define BUFFER_SIZE 200000
+typedef struct s_clients
+{
+    int     id;
+    char    msg[1024];
+} t_clients;
+
+t_clients   clients[1024];
+fd_set      ready, fd, active;
+int         fdMax = 0, idNext = 0;
+char        rbuffer[120000], wbuffer[120000];
 
 void	fterror(char *str)
 {
@@ -19,6 +27,13 @@ void	fterror(char *str)
 	exit(1);
 }
 
+void    sendAll(int not)
+{
+    for(int i = 0; i <= fdMax; i++)
+        if(FD_ISSET(i, &fd) && i != not)
+            send(i, wbuffer, strlen(wbuffer), 0);
+}
+
 int	main(int ac, char **av)
 {
 	if (ac != 2)
@@ -26,59 +41,67 @@ int	main(int ac, char **av)
 	int	s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s < 0)
 		fterror(NULL);
-	fd_set				active, ready;
-	FD_SET(s, &active);
 	FD_ZERO(&active);
-    char				buffer[BUFFER_SIZE];
-    int					clients[MAX_CLIENTS];
-	int					fdMax = 0, idNext = 0;
-	struct sockaddr_in	address = {0};
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	bzero(&clients, sizeof(clients));
+	fdMax = s;
+	FD_SET(s, &active);
+	struct sockaddr_in	address;
+	socklen_t           len;
+   	bzero(&address, sizeof(address));
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     address.sin_port = htons(atoi(av[1]));
 
-	if (bind(s, (struct sockaddr *)&address, sizeof(address)) < 0)
+	if (bind(s, (const struct sockaddr *)&address, sizeof(address)) < 0)
 		fterror(NULL);
 	if (listen(s, 10) < 0)
 		fterror(NULL);
+
 	while (1)
 	{
-		ready = active;
-		if (select(fdMax + 1, &ready, NULL, NULL, NULL) < 0)
+		ready = fd = active;
+		if (select(fdMax + 1, &ready, &fd, NULL, NULL) < 0)
 			continue;
-		for (int	fdI = 0; fdI <= fdMax; fdI++)
+		for (int fdI = 0; fdI <= fdMax; fdI++)
 		{
 			if (FD_ISSET(fdI, &ready) && fdI == s)
-			{	
-				int	sclient = accept(s, NULL, NULL);
+			{
+				int	sclient = accept(s, (struct sockaddr *)&address, &len);
 				if (sclient < 0)
 					continue;
-				FD_SET(sclient, &active);
 				fdMax = (sclient > fdMax ? sclient : fdMax);
-				sprintf(buffer, "server: client %d just arrived\n", idNext);
-				send(sclient, buffer, strlen(buffer), 0);
-				clients[idNext++] = sclient;
+				clients[sclient].id = idNext++;
+				FD_SET(sclient, &active);
+				sprintf(wbuffer, "server: client %d just arrived\n", idNext);
+				sendAll(sclient);
+				break;
 			}
 			if (FD_ISSET(fdI, &ready) && fdI != s)
 			{
-				int	res = recv(fdI, buffer, sizeof(buffer) - 1, 0);
+				int	res = recv(fdI, rbuffer, sizeof(rbuffer) - 1, 0);
 				if (res <= 0)
 				{
-					sprintf(buffer, "server: client %d just left\n", fdI);
-                    for (int i = 0; i < idNext; i++) 
-                        if (clients[i] != fdI) 
-                            send(clients[i], buffer, strlen(buffer), 0);
+					sprintf(wbuffer, "server: client %d just left\n", fdI);
+					sendAll(fdI);
                     close(fdI);
                     FD_CLR(fdI, &active);
 				}
 				else
                 {
-                    buffer[res] = '\0';
-                    sprintf(buffer, "client %d: %s\n", fdI, buffer);
-                    for (int i = 0; i < idNext; i++) 
-                        if (clients[i] != fdI) 
-                            send(clients[i], buffer, strlen(buffer), 0);
-                }
+				for (int i = 0, j = strlen(clients[fdI].msg); i < res; i++, j++)
+					{
+						clients[fdI].msg[j] = rbuffer[i];
+						if (clients[fdI].msg[j] == '\n')
+						{
+							clients[fdI].msg[j] = '\0';
+							sprintf(wbuffer, "client %d: %s\n", clients[fdI].id, clients[fdI].msg);
+							sendAll(fdI);
+							bzero(&clients[fdI].msg, strlen(clients[fdI].msg));
+							j = -1;
+                   	    }
+                   	}
+				break;
+				}
 			}
 		}
 	}
