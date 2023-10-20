@@ -13,7 +13,7 @@ typedef struct s_clients
 } t_clients;
 
 t_clients   clients[1024];
-fd_set      ready, fd, active;
+fd_set      ready, fd, action;
 int         fdMax = 0, idNext = 0;
 char        rbuffer[120000], wbuffer[120000];
 
@@ -27,51 +27,49 @@ void	fterror(char *str)
 	exit(1);
 }
 
-void    sendAll(int not)
+void    sendAll(int n)
 {
     for(int i = 0; i <= fdMax; i++)
-        if(FD_ISSET(i, &fd) && i != not)
+        if(FD_ISSET(i, &fd) && i != n)
             send(i, wbuffer, strlen(wbuffer), 0);
 }
 
 int	main(int ac, char **av)
 {
-	if (ac != 2)
+	if (ac < 0)
 		fterror("Wrong number of arguments");
 	int	s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s < 0)
 		fterror(NULL);
-	FD_ZERO(&active);
+	FD_ZERO(&action);
 	bzero(&clients, sizeof(clients));
 	fdMax = s;
-	FD_SET(s, &active);
-	struct sockaddr_in	address;
+	FD_SET(s, &action);
+	struct sockaddr_in	servaddr;
 	socklen_t           len;
-   	bzero(&address, sizeof(address));
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    address.sin_port = htons(atoi(av[1]));
-
-	if (bind(s, (const struct sockaddr *)&address, sizeof(address)) < 0)
+   	bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    servaddr.sin_port = htons(atoi(av[1]));
+	if (bind(s, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 		fterror(NULL);
 	if (listen(s, 10) < 0)
 		fterror(NULL);
-
 	while (1)
 	{
-		ready = fd = active;
+		ready = fd = action;
 		if (select(fdMax + 1, &ready, &fd, NULL, NULL) < 0)
 			continue;
 		for (int fdI = 0; fdI <= fdMax; fdI++)
 		{
 			if (FD_ISSET(fdI, &ready) && fdI == s)
 			{
-				int	sclient = accept(s, (struct sockaddr *)&address, &len);
+				int	sclient = accept(s, (struct sockaddr *)&servaddr, &len);
 				if (sclient < 0)
 					continue;
 				fdMax = (sclient > fdMax ? sclient : fdMax);
 				clients[sclient].id = idNext++;
-				FD_SET(sclient, &active);
+				FD_SET(sclient, &action);
 				sprintf(wbuffer, "server: client %d just arrived\n", idNext);
 				sendAll(sclient);
 				break;
@@ -84,11 +82,11 @@ int	main(int ac, char **av)
 					sprintf(wbuffer, "server: client %d just left\n", fdI);
 					sendAll(fdI);
                     close(fdI);
-                    FD_CLR(fdI, &active);
+                    FD_CLR(fdI, &action);
 				}
 				else
                 {
-				for (int i = 0, j = strlen(clients[fdI].msg); i < res; i++, j++)
+					for (int i = 0, j = strlen(clients[fdI].msg); i < res; i++, j++)
 					{
 						clients[fdI].msg[j] = rbuffer[i];
 						if (clients[fdI].msg[j] == '\n')

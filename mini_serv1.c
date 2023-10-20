@@ -26,24 +26,25 @@ int	main(int ac, char **av)
 	int	s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s < 0)
 		fterror(NULL);
-	fd_set				active, ready;
-	FD_SET(s, &active);
-	FD_ZERO(&active);
     char				buffer[BUFFER_SIZE];
     int					clients[MAX_CLIENTS];
 	int					fdMax = 0, idNext = 0;
-	struct sockaddr_in	address = {0};
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    address.sin_port = htons(atoi(av[1]));
+	fd_set				action, ready;
+	FD_ZERO(&action);
+	fdMax = s;
+	FD_SET(s, &action);
+	struct sockaddr_in	servaddr = {0};
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    servaddr.sin_port = htons(atoi(av[1]));
 
-	if (bind(s, (struct sockaddr *)&address, sizeof(address)) < 0)
+	if (bind(s, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 		fterror(NULL);
 	if (listen(s, 10) < 0)
 		fterror(NULL);
 	while (1)
 	{
-		ready = active;
+		ready = action;
 		if (select(fdMax + 1, &ready, NULL, NULL, NULL) < 0)
 			continue;
 		for (int	fdI = 0; fdI <= fdMax; fdI++)
@@ -53,7 +54,7 @@ int	main(int ac, char **av)
 				int	sclient = accept(s, NULL, NULL);
 				if (sclient < 0)
 					continue;
-				FD_SET(sclient, &active);
+				FD_SET(sclient, &action);
 				fdMax = (sclient > fdMax ? sclient : fdMax);
 				sprintf(buffer, "server: client %d just arrived\n", idNext);
 				send(sclient, buffer, strlen(buffer), 0);
@@ -69,7 +70,7 @@ int	main(int ac, char **av)
                         if (clients[i] != fdI) 
                             send(clients[i], buffer, strlen(buffer), 0);
                     close(fdI);
-                    FD_CLR(fdI, &active);
+                    FD_CLR(fdI, &action);
 				}
 				else
                 {
