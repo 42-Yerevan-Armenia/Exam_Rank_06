@@ -69,12 +69,12 @@ int	main(int ac, char **av)
 		{
 			if (FD_ISSET(fdI, &ready))
 			{
-				int		r = 1;
+				int		res = 1;
 				char	msg[1024];
 				bzero(&msg, sizeof(msg));
-				while(r == 1 && msg[strlen(msg) - 1] != '\n')
-					r = recv(fdI, msg + strlen(msg), 1, 0);
-				if (r <= 0)
+				while(res == 1 && msg[strlen(msg) - 1] != '\n')
+					res = recv(fdI, msg + strlen(msg), 1, 0);
+				if (res <= 0)
 				{
 					sprintf(buffer, "server: client %d just left\n", clients[fdI]);
 					FD_CLR(fdI, &action);
