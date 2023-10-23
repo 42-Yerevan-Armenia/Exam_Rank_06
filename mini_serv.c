@@ -73,7 +73,7 @@ int	main(int ac, char **av)
 				char	msg[1024];
 				bzero(&msg, sizeof(msg));
 				while(r == 1 && msg[strlen(msg) - 1] != '\n')
-					r = recv(fd, msg + strlen(msg), 1, 0);
+					r = recv(fdI, msg + strlen(msg), 1, 0);
 				if (r <= 0)
 				{
 					sprintf(wbuffer, "server: client %d just left\n", clients[fdI]);
