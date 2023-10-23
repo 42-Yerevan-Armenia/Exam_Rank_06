@@ -9,7 +9,7 @@
 fd_set	ready, fd, action; 
 int		clients[1024];
 int		fdMax = 0, idNext = 0, s = 0;
-char	wbuffer[120000];
+char	buffer[120000];
 
 void	fterror(char *str)
 {
@@ -23,9 +23,9 @@ void	sendAll(int n)
 {
 	for (int i = 3; i <= fdMax; ++i)
 		if (FD_ISSET(i, &fd) && i != n)
-			if (send(i, wbuffer, strlen(wbuffer), 0) < 0)
+			if (send(i, buffer, strlen(buffer), 0) < 0)
 				fterror("fatal error\n");
-	bzero(&wbuffer, sizeof(wbuffer));
+	bzero(&buffer, sizeof(buffer));
 }
 
 int	main(int ac, char **av)
@@ -59,9 +59,9 @@ int	main(int ac, char **av)
 			if (sclient < 0)
 				fterror("fatal error\n");
 			FD_SET(sclient, &action);
-			sprintf(wbuffer, "server: client %d just arrived\n", idNext);
-			sendAll(sclient);
+			sprintf(buffer, "server: client %d just arrived\n", idNext);
 			clients[sclient] = idNext++;
+			sendAll(sclient);
 			fdMax = sclient > fdMax ? sclient : fdMax;
 			continue;
 		}
@@ -76,12 +76,12 @@ int	main(int ac, char **av)
 					r = recv(fdI, msg + strlen(msg), 1, 0);
 				if (r <= 0)
 				{
-					sprintf(wbuffer, "server: client %d just left\n", clients[fdI]);
+					sprintf(buffer, "server: client %d just left\n", clients[fdI]);
 					FD_CLR(fdI, &action);
 					close(fdI);
 				}
 				else
-					sprintf(wbuffer, "client %d: %s", clients[fdI], msg);
+					sprintf(buffer, "client %d: %s", clients[fdI], msg);
 				sendAll(fdI);
 			}
 		}
