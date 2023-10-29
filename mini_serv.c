@@ -65,24 +65,24 @@ int	main(int ac, char **av)
 			fdMax = sclient > fdMax ? sclient : fdMax;
 			continue;
 		}
-		for (int fdI = 3; fdI <= fdMax; ++fdI)
+		for (int i = 3; i <= fdMax; ++i)
 		{
-			if (FD_ISSET(fdI, &ready))
+			if (FD_ISSET(i, &ready))
 			{
 				int		res = 1;
 				char	msg[1024];
 				bzero(&msg, sizeof(msg));
 				while(res == 1 && msg[strlen(msg) - 1] != '\n')
-					res = recv(fdI, msg + strlen(msg), 1, 0);
+					res = recv(i, msg + strlen(msg), 1, 0);
 				if (res <= 0)
 				{
-					sprintf(buffer, "server: client %d just left\n", clients[fdI]);
-					FD_CLR(fdI, &action);
-					close(fdI);
+					sprintf(buffer, "server: client %d just left\n", clients[i]);
+					FD_CLR(i, &action);
+					close(i);
 				}
 				else
-					sprintf(buffer, "client %d: %s", clients[fdI], msg);
-				sendAll(fdI);
+					sprintf(buffer, "client %d: %s", clients[i], msg);
+				sendAll(i);
 			}
 		}
 	}
