@@ -59,7 +59,7 @@ int	main(int ac, char **av)
 		{// New client connection
 			sclient = accept(s, (struct sockaddr *)&cli, &len);					// Accept a new client connection accept(s, (struct sockaddr *)&address, &len)
 			if (sclient < 0)
-				fterror("Fatal error\n");
+				continue;
 			FD_SET(sclient, &action);											// Add the client socket to the set of active sockets
 			sprintf(buffer, "server: client %d just arrived\n", idNext);		// Prepare the welcome message
 			clients[sclient] = idNext++;										// Add the client socket to the array

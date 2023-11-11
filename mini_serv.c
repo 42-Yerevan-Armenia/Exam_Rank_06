@@ -59,7 +59,7 @@ int	main(int ac, char **av)
 		{
 			sclient = accept(s, (struct sockaddr *)&cli, &len);
 			if (sclient < 0)
-				fterror("Fatal error\n");//maybe continue???
+				continue;
 			FD_SET(sclient, &action);
 			sprintf(buffer, "server: client %d just arrived\n", idNext);
 			clients[sclient] = idNext++;
